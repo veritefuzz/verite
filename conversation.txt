@@ -1,0 +1,194 @@
+> VERITE:
+
+Assume you are an expert of Web3 and you are writing solidity functions to wrap common DeFi interactions.
+
+Below is the document of DODO Dex on exchange:
+
+======================
+
+Access to Trading Information on DODO V2
+For the DODO V2 pools, the functions are defined uniformly, exposing two functions for developers to use: sellBase and sellQuote
+
+ function sellBase(address to) external returns (uint256 receiveQuoteAmount);
+sellBase allows you to sell base tokens and receive quote tokens, and requires the trader to construct a trade with two actions. The first action is to transfer the base token to be exchanged to the current pool subcontract, and the second one is to trigger sellBase with the receiving address of the exchange as an argument.
+
+It is recommended that traders perform a balance check on receiveQuoteAmount before closing to ensure the safe execution of the trade.
+
+ function sellQuote(address to) external returns (uint256 receiveBaseAmount);
+
+===========================
+
+For you reference, here is a unit test from DODODEX using the two API:
+
+===========================
+        it("first buy and then sell", async () => {
+            // buy at R=1
+            await ctx.transferQuoteToDSP(trader, decimalStr("100"))
+            await logGas(ctx.DSP.methods.sellQuote(trader), ctx.sendParam(trader), "sellQuote - buy at R=1")
+            var balances = await ctx.getBalances(trader)
+
+            assert.equal(balances.traderBase, "1098914196817061816111")
+            assert.equal(balances.traderQuote, decimalStr("900"))
+            assert.equal(balances.DSPBase, "901085803182938183889")
+            assert.equal(balances.DSPQuote, decimalStr("1100"))
+            assert.equal(balances.maintainerBase, "0")
+            assert.equal(balances.maintainerQuote, "0")
+
+            // buy at R>1
+            await ctx.transferQuoteToDSP(trader, decimalStr("100"))
+            await logGas(ctx.DSP.methods.sellQuote(trader), ctx.sendParam(trader), "sellQuote - buy at R>1")
+            balances = await ctx.getBalances(trader)
+
+            assert.equal(balances.traderBase, "1195262145875634983260")
+            assert.equal(balances.traderQuote, decimalStr("800"))
+            assert.equal(balances.DSPBase, "804737854124365016740")
+            assert.equal(balances.DSPQuote, decimalStr("1200"))
+            assert.equal(balances.maintainerBase, "0")
+            assert.equal(balances.maintainerQuote, "0")
+
+            // sell at R>1 and R not change state
+            await ctx.transferBaseToDSP(trader, decimalStr("100"))
+            await logGas(ctx.DSP.methods.sellBase(trader), ctx.sendParam(trader), "sellBase - sell at R>1 and R not change state")
+            balances = await ctx.getBalances(trader)
+
+            assert.equal(balances.traderBase, "1095262145875634983260")
+            assert.equal(balances.traderQuote, "903734814802481693100")
+            assert.equal(balances.DSPBase, "904737854124365016740")
+            assert.equal(balances.DSPQuote, "1096265185197518306900")
+            assert.equal(balances.maintainerBase, "0")
+            assert.equal(balances.maintainerQuote, "0")
+
+
+            // sell at R>1 and R change state
+            await ctx.transferBaseToDSP(trader, decimalStr("200"))
+
+            await logGas(ctx.DSP.methods.sellBase(trader), ctx.sendParam(trader), "sellBase - sell at R>1 and R change state")
+            balances = await ctx.getBalances(trader)
+
+            assert.equal(balances.traderBase, "895262145875634983260")
+            assert.equal(balances.traderQuote, "1103541932946094354686")
+            assert.equal(balances.DSPBase, "1104737854124365016740")
+            assert.equal(balances.DSPQuote, "896458067053905645314")
+            assert.equal(balances.maintainerBase, "0")
+            assert.equal(balances.maintainerQuote, "0")
+
+            var PMMStat = await ctx.DSP.methods.getPMMState().call()
+            assert.equal(PMMStat.R, "2")
+            assert.equal(PMMStat.B0, "999999999999999996713")
+        });
+===========================
+
+Now you are going to deploy a contract and interacting with these two funcitons, come up with the solidity implementation.
+
+
+
+> LLM:
+
+To implement a contract that interacts with the DODO V2 exchange functions, we can create a simple contract that allows users to sell base and quote tokens. Below is a basic Solidity implementation:
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IDODOV2 {
+    function sellBase(address to) external returns (uint256 receiveQuoteAmount);
+    function sellQuote(address to) external returns (uint256 receiveBaseAmount);
+}
+
+contract DODOV2Trader {
+    IDODOV2 public dodo;
+
+    constructor(address _dodoAddress) {
+        dodo = IDODOV2(_dodoAddress);
+    }
+
+    // Function to sell base tokens for quote tokens
+    function sellBaseTokens(address to, uint256 amount) external returns (uint256) {
+        // Transfer base tokens to the DODO pool
+        require(ERC20(baseToken).transferFrom(msg.sender, address(dodo), amount), "Transfer failed");
+        
+        // Execute the sellBase function
+        uint256 receivedAmount = dodo.sellBase(to);
+        return receivedAmount;
+    }
+
+    // Function to sell quote tokens for base tokens
+    function sellQuoteTokens(address to, uint256 amount) external returns (uint256) {
+        // Transfer quote tokens to the DODO pool
+        require(ERC20(quoteToken).transferFrom(msg.sender, address(dodo), amount), "Transfer failed");
+        
+        // Execute the sellQuote function
+        uint256 receivedAmount = dodo.sellQuote(to);
+        return receivedAmount;
+    }
+}
+
+n this implementation:
+
+The contract interacts with the DODO V2 interface.
+It provides two functions, sellBaseTokens and sellQuoteTokens, to facilitate trading.
+It assumes baseToken and quoteToken are defined as ERC20 tokens and will need to be specified in the contract.
+Would you like to delve into any specific part of this implementation?
+
+
+  
+> VERITE:
+
+Good, now instead of providing amount as a parameter, replace it with "percentange", which is the percentage of the base token we are holding.
+
+> LLM:
+
+Here’s the updated implementation that replaces the amount parameter with percentage to specify the percentage of the base token held:
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IDODOV2 {
+    function sellBase(address to) external returns (uint256 receiveQuoteAmount);
+    function sellQuote(address to) external returns (uint256 receiveBaseAmount);
+}
+
+interface IERC20 {
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
+}
+
+contract DODOV2Trader {
+    IDODOV2 public dodo;
+    IERC20 public baseToken;
+    IERC20 public quoteToken;
+
+    constructor(address _dodoAddress, address _baseTokenAddress, address _quoteTokenAddress) {
+        dodo = IDODOV2(_dodoAddress);
+        baseToken = IERC20(_baseTokenAddress);
+        quoteToken = IERC20(_quoteTokenAddress);
+    }
+
+    // Function to sell a percentage of base tokens for quote tokens
+    function sellBaseTokens(address to, uint256 percentage) external returns (uint256) {
+        uint256 totalBase = baseToken.balanceOf(msg.sender);
+        uint256 amountToSell = (totalBase * percentage) / 100;
+
+        require(amountToSell > 0, "Amount must be greater than zero");
+        require(baseToken.transferFrom(msg.sender, address(dodo), amountToSell), "Transfer failed");
+        
+        uint256 receivedAmount = dodo.sellBase(to);
+        return receivedAmount;
+    }
+
+    // Function to sell a percentage of quote tokens for base tokens
+    function sellQuoteTokens(address to, uint256 percentage) external returns (uint256) {
+        uint256 totalQuote = quoteToken.balanceOf(msg.sender);
+        uint256 amountToSell = (totalQuote * percentage) / 100;
+
+        require(amountToSell > 0, "Amount must be greater than zero");
+        require(quoteToken.transferFrom(msg.sender, address(dodo), amountToSell), "Transfer failed");
+        
+        uint256 receivedAmount = dodo.sellQuote(to);
+        return receivedAmount;
+    }
+}
+
+Key Changes:
+The amount parameter is replaced with percentage.
+The amount to sell is calculated based on the percentage of the total balance of the respective token.
+Let me know if you want to delve deeper into any specific aspect!
