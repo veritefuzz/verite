@@ -6,7 +6,7 @@ Verite is a smart contract fuzzing tool towards maximum profits. This repo conta
 
 We provide a docker image to reproduce our result.
 
-Download link: [Link](https://mega.nz/file/NgY1AJgD#3CmDtvxFn3EZ6Mm3P2QdHehwons2ow-ZrvMa2AvrW_Y).
+Download link: [Link](https://mega.nz/file/qqoCwTAC#BV4F0ci17xPEr5gQ_KLdRY8WmdpAj_ma3HABkbgehkw).
 
 Run a fuzzing experiment with
 
