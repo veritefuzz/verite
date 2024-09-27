@@ -6,7 +6,18 @@ Verite is a smart contract fuzzing tool towards maximum profits. This repo conta
 
 We provide a docker image to reproduce our result.
 
-Download link: TBD.
+Download link: [Link](https://mega.nz/file/NgY1AJgD#3CmDtvxFn3EZ6Mm3P2QdHehwons2ow-ZrvMa2AvrW_Y).
+
+Run a fuzzing experiment with
+
+```
+# Import the image
+cat verite.tar.zstd | zstd -d | docker load
+# See help
+docker run --rm -it fse24 fuzz --help
+# Run an experiment
+docker run --rm -it -v /tmp/out:/tmp/out fse24 fuzz -a addr1,addr2... -b 100000 --rpc http://127.0.0.1:8545 -o /tmp/out -e https://api.bscscan.com/api -k ...
+```
 
 ## Dataset
 
