@@ -23,6 +23,8 @@ docker run --rm -it -v /tmp/out:/tmp/out fse24 fuzz -a addr1,addr2... -b 100000 
 
 The dataset is available at [dataset.csv](./dataset.csv).
 
+The full breakdowns of profit increasing contributions is available at [figures subfolder](./figures/).
+
 ## Supplementary Materials
 
 ### ItyFuzz FP Analysis
