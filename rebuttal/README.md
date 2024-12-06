@@ -1,5 +1,13 @@
 # Supplemental Material for Rebuttal
 
+## Time Distributions of Fuzzing Stages
+
+See [this](./distributions).
+
+## Profiling Verite
+
+See [this](./flamegraphs).
+
 ## Coverage Improvement Case Study
 
 We use DFS as a case study. DFS takes a fee on selling tokens but asks users to calculate the fee in advance, i.e. users can’t really sell 100 tokens even if users hold 100 tokens. Our mutation supports mutating the ratio of transferring and selling tokens and thus we can have higher code coverage by finishing the swapping successfully while ItyFuzz fails to cover the code [1]. 
